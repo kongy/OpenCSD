@@ -76,6 +76,7 @@ ocsd_datapath_resp_t TrcPktDecodeEtmV4I::processPacket()
                 err = m_out_elem.addElemType(m_index_curr_pkt, OCSD_GEN_TRC_ELEM_NO_SYNC);
             if (!err)
             {
+                outElem().setUnSyncEOTReason(m_unsync_eot_info);
                 resp = m_out_elem.sendElements();
                 m_curr_state = WAIT_SYNC;
             }
@@ -151,6 +152,7 @@ ocsd_datapath_resp_t TrcPktDecodeEtmV4I::onEOT()
 ocsd_datapath_resp_t TrcPktDecodeEtmV4I::onReset()
 {
     ocsd_datapath_resp_t resp = OCSD_RESP_CONT;
+    m_unsync_eot_info = UNSYNC_RESET_DECODER;
     resetDecoder();
     return resp;
 }
@@ -237,6 +239,7 @@ void TrcPktDecodeEtmV4I::initDecoder()
 #endif
 
     // reset decoder state to unsynced
+    m_unsync_eot_info = UNSYNC_INIT_DECODER;
     resetDecoder();
 }
 
@@ -836,6 +839,7 @@ ocsd_err_t TrcPktDecodeEtmV4I::commitElemOnEOT()
     if(!err)
     {
         err = m_out_elem.addElemType(m_index_curr_pkt, OCSD_GEN_TRC_ELEM_EO_TRACE);
+        outElem().setUnSyncEOTReason(m_prev_overflow ? UNSYNC_OVERFLOW : UNSYNC_EOT);
     }
     return err;
 }
@@ -965,6 +969,7 @@ ocsd_err_t TrcPktDecodeEtmV4I::discardElements()
     }
     m_elem_res.discard = false;
     m_curr_state = NO_SYNC;
+    m_unsync_eot_info = m_prev_overflow ? UNSYNC_OVERFLOW : UNSYNC_DISCARD;
     return err;
 }
 
@@ -1516,6 +1521,7 @@ ocsd_err_t TrcPktDecodeEtmV4I::handleBadPacket(const char *reason)
         // switch to unsync - clear decode state
         resetDecoder();
         m_curr_state = NO_SYNC;
+        m_unsync_eot_info = UNSYNC_BAD_PACKET;
     }
     return err;
 }
